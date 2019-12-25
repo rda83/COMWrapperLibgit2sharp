@@ -57,6 +57,13 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Branches.cs" />
+    <Compile Include="BranchWrapper.cs" />
+    <Compile Include="CommitFilterWrapper.cs" />
+    <Compile Include="Commits.cs" />
+    <Compile Include="CommitWrapper.cs" />
+    <Compile Include="Helper.cs" />
+    <Compile Include="TestCollections.cs" />
     <Compile Include="GitRepository.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

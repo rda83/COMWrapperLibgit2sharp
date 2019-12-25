@@ -1,4 +1,5 @@
 ﻿using LibGit2Sharp;
+using LibGit2Sharp.Handlers;
 using System;
 using System.Runtime.InteropServices;
 
@@ -8,8 +9,21 @@ namespace COMWrapperLibgit2sharp
     [ComVisible(true)]
     public interface IGitRepository
     {
-        Repository GetRepository(string repositoryPath);
-        Branch Checkout(Repository repository, string branchName);
+        void OpenRepository(string repositoryPath);
+        
+        void Pull(string mergeUserName, string mergeUserEmail, string userName = "", string password = "");
+
+        Branches GetBranches();
+        Branch GetBranch(string branchName);
+
+        BranchWrapper Checkout(string branchName);
+
+        TestCollections GetTestCollections();
+
+        Commits GetCommits();
+        Commits GetCommits(object IncludeReachableFrom, object ExcludeReachableFrom);
+        Commits GetCommitsByPath(string path);
+
     }
 
     [Guid("A27376DA-E8CA-4EFF-896E-586C91A46257")]
@@ -18,28 +32,96 @@ namespace COMWrapperLibgit2sharp
     [ProgId("GitRepository")]
     public class GitRepository : IGitRepository
     {
+        private Repository repository { get; set; }
 
-        public void Initialization()
+        public void OpenRepository(string repositoryPath)
         {
+            repository                  = new Repository(repositoryPath);
         }
 
-        public Repository GetRepository(string repositoryPath)
-        {
-            return new Repository(repositoryPath);
-        }
-
-        public Branch Checkout(Repository repository, string branchName)
+        public BranchWrapper Checkout(string branchName)
         {
 
             Branch branch = repository.Branches[branchName];
 
             if (branch == null)
             {
+                Helper.WriteLog(branchName);
                 return null;
             }
 
             Branch currentBranch = Commands.Checkout(repository, branch);
-            return currentBranch;
+            return BranchWrapper.CreateBranchWrapperFromBranch(currentBranch); 
+        }
+
+        public void Pull(string mergeUserName, string mergeUserEmail, string userName = "", string password = "")
+        {
+            LibGit2Sharp.PullOptions options = new LibGit2Sharp.PullOptions();
+            options.FetchOptions = new FetchOptions();
+            options.FetchOptions.CredentialsProvider = new CredentialsHandler(
+                (url, usernameFromUrl, types) =>
+                    new UsernamePasswordCredentials()
+                    {
+                        Username = userName,
+                        Password = password
+                    });
+
+            var signature = new LibGit2Sharp.Signature(
+                new Identity(mergeUserName, mergeUserEmail), DateTimeOffset.Now);
+
+            Commands.Pull(repository, signature, options);
+        }
+
+        public Branches GetBranches()
+        {
+
+            var branches = new Branches();
+            branches._branchCollection = repository.Branches;
+
+            return branches; 
+        }
+
+        public TestCollections GetTestCollections()
+        {
+            return new TestCollections();
+        }
+
+        public Commits GetCommits()
+        {
+
+            var commits = new Commits();
+            commits._commitLog = repository.Commits;
+
+            return commits;
+        }
+
+        public Commits GetCommits(object IncludeReachableFrom, object ExcludeReachableFrom)
+        {
+            var commits = new Commits();
+
+            
+            var filter = new CommitFilter();
+            filter.IncludeReachableFrom = IncludeReachableFrom;
+            filter.ExcludeReachableFrom = ExcludeReachableFrom;
+
+            commits._commitLog = (IQueryableCommitLog) repository.Commits.QueryBy(filter);
+
+            return commits;
+        }
+
+        public Branch GetBranch(string branchName)
+        {
+
+            return repository.Branches[branchName];
+        }
+
+        public Commits GetCommitsByPath(string path)
+        {
+            var commits = new Commits();
+
+            commits._commitLog = (IQueryableCommitLog) repository.Commits.QueryBy(path);
+
+            return commits;
         }
     }
 }
